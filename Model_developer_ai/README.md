@@ -1,0 +1,9 @@
+# Model_developer_ai
+
+| Type  | Extensions                                                            | Encoding Techniques                                                        |
+|-------|----------------------------------------------------------------------|---------------------------------------------------------------------------|
+| Text  | .txt, .doc, .docx, .pdf, .rtf, .odt, .pages, .tex, .wpd, .md, .html, .xml, .json, .csv, .log, .ini, .yml, .toml, .bib, .sql, .php, .js, .py, .rb, .java | ASCII, UTF-8, UTF-16, UTF-32, ISO-8859, Windows-1252, ANSI, Unicode, Base64, Quoted-Printable, MIME, UUencode, BinHex, ISCII, VISCII, Big5, GB18030, KOI8-R, Shift JIS, EUC-JP, EUC-KR |
+| Video | .mp4, .avi, .mov, .wmv, .flv, .mkv, .webm, .3gp, .m4v, .mpg, .mpeg, .rm, .swf, .vob, .ogv, .mts, .m2ts, .ts, .mxf, .roq, .nsv, .f4v, .f4p, .f4a, .f4b | H.264/MPEG-4 AVC, H.265/HEVC, VP8, VP9, AV1, MPEG-1, MPEG-2, MPEG-4 Part 2, Theora, Dirac, RealVideo, Windows Media Video, QuickTime, DivX, Xvid, Cinepak, Indeo, Sorenson, Flash Video, FFV1, Huffyuv, Lagarith, DNxHD, ProRes, CineForm |
+| Audio | .mp3, .wav, .aac, .flac, .ogg, .wma, .m4a, .aiff, .au, .ra, .mid, .midi, .mka, .ac3, .dts, .opus, .amr, .m4b, .m4p, .ape, .mpc, .wv, .tta, .tak | MP3, AAC, FLAC, Ogg Vorbis, WMA, ALAC, PCM, AIFF, AU, RA, MIDI, Opus, AMR, Dolby Digital (AC-3), DTS, Musepack, WavPack, TTA, TAK, Speex, GSM, ADPCM, LPCM, ATRAC, WavPack |
+| Image | .jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp, .svg, .psd, .ai, .eps, .indd, .raw, .cr2, .nef, .orf, .sr2, .rw2, .rwl, .dng, .dcr, .kdc, .erf, .mrw, .raf, .tif | JPEG, PNG, GIF, BMP, TIFF, WebP, SVG, PSD, AI, EPS, INDD, RAW, DNG, HEIF, EXIF, IPTC, XMP, CIFF, JFIF, PCX, PGM, PPM, PBM, PNM, SGI, TGA, PICT, PCT, Pixar, Radiance HDR, OpenEXR, PFM, PAM, FITS, VICAR, DICOM, NRRD |
+-------

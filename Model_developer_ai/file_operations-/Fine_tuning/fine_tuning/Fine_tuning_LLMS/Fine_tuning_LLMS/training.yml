@@ -1,0 +1,12 @@
+description: "Pre-training on the custom dataset custom model."
+model_name_or_path: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+output_dir: 'hemanth_LLMs-TinyLlama-1.1B-Chat-v1.0'
+dataset_name_or_path: "fka/awesome-chatgpt-prompts"
+tokenizer_name_or_path: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0'
+config_name: ""
+max_seq_length: 100
+tokenizer_name: ""
+chars_per_token: 3.5
+fim_rate: 0.5
+fim_spm_rate: 0.5
+seed: 24

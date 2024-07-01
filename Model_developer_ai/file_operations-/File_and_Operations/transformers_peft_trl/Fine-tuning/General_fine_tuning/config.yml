@@ -1,0 +1,16 @@
+# config.yml
+model_name_or_path: "bert-base-cased"
+tokenizer_name_or_path: " bert-base-cased"
+max_length: 256
+lr: 0.01
+num_epochs: 5
+batch_size: 32
+device: cpu
+output_dir_path: "./output"
+speific_format_dir: ''
+dataset_local_path: ''
+dataset_name: 'fka/awesome-chatgpt-prompts'
+text_column: "text"
+label_column: "label"
+speific_format_extension: ""
+

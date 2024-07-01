@@ -1,0 +1,12 @@
+description: "Pre-training on the custom dataset custom model."
+model_name_or_path: "TinyLlama/TinyLlama-1.1B-step-50K-105b"
+output_dir: 'hemanth_LLM'
+dataset_name_or_path: 'hollyyfc/tidytuesday_for_python'
+tokenizer_name_or_path: 'TinyLlama/TinyLlama-1.1B-step-50K-105b'
+config_name: ""
+max_seq_length: 50
+tokenizer_name: ""
+chars_per_token: 3.5
+fim_rate: 0.5
+fim_spm_rate: 0.5
+seed: 0

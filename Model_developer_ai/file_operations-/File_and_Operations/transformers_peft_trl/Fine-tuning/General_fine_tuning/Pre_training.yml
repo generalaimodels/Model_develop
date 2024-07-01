@@ -1,0 +1,12 @@
+description: "Pre-training on the custom dataset custom model."
+model_name_or_path: ''
+output_dir: ''
+dataset_name_or_path: ''
+tokenizer_name_or_path: ''
+config_name: ""
+max_seq_length: 1024
+tokenizer_name: ""
+chars_per_token: 3.5
+fim_rate: 0.5
+fim_spm_rate: 0.5
+seed: 0

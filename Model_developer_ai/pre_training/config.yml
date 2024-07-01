@@ -1,0 +1,3 @@
+dataset_name_or_path: "fka/awesome-chatgpt-prompts"
+model_name_path: 'gpt2'
+model_parameters_print: true

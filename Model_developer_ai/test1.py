@@ -1,0 +1,275 @@
+from pre_processing.text import create_data_loaders,data_tokenization
+from FAST_ANALYSIS import (prepare_datasetsforhemanth, 
+                           AdvancedPipelineForhemanth,
+                           AiModelForHemanth,
+                           AdvancedPreProcessForHemanth,
+                           summarizemodelforhemanth,
+                           printmodelsummaryforhemanth,
+                           generate_text,
+                           rgb_print,
+                           generate_text_with_strategies,
+                           create_advanced_model_trainer,
+                           
+                           )
+
+import logging
+from typing import Dict, List, Optional, Union
+from datasets import load_dataset, Dataset, DatasetDict
+from transformers import PreTrainedTokenizer, AutoTokenizer
+import torch
+from torch.utils.data import DataLoader
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class AdvancedPipeline:
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        max_sequence_length: int,
+        padding: str = "max_length",
+        return_tensors: str = "pt"
+    ):
+        self.tokenizer = tokenizer
+        self.max_sequence_length = max_sequence_length
+        self.padding = padding
+        self.return_tensors = return_tensors
+
+    @staticmethod
+    def combined_text(example: Dict[str, str]) -> Dict[str, str]:
+        """
+        Combines text from multiple columns into a single 'text' column.
+        """
+        combined_text_content = "".join(
+            example[col] for col in example.keys()
+        )
+        return {"text": combined_text_content}
+
+    def process_dataset(self, dataset: Union[str, Dict, Dataset, DatasetDict]) -> DatasetDict:
+        """
+        Process the dataset by combining text and tokenizing.
+        """
+        try:
+            dataset=prepare_datasetsforhemanth(dataset)
+            print(dataset)
+            
+            logger.info(f"Dataset loaded successfully. Number of splits: {len(dataset)}")
+
+            for split_name in dataset.keys():
+                dataset[split_name] = dataset[split_name].map(
+                    self.combined_text, 
+                    remove_columns=dataset[split_name].column_names
+                )
+                dataset[split_name] = dataset[split_name].map(
+                    lambda example: self.tokenizer(
+                        example["text"],
+                        truncation=True,
+                        padding=self.padding,
+                        max_length=self.max_sequence_length,
+                    ),
+                    batched=True,
+                    remove_columns=["text"],
+                )
+                dataset[split_name] = dataset[split_name].map(
+                    lambda example: {'labels': example['input_ids']}, 
+                    batched=True
+                )
+                dataset[split_name].set_format(
+                    type=self.return_tensors, 
+                    columns=["input_ids", "labels", "attention_mask"]
+                )
+
+            logger.info("Dataset processed successfully.")
+            return dataset
+        except Exception as e:
+            logger.error(f"Error processing dataset: {str(e)}")
+            raise
+
+    def pre_training_llms(
+        self,
+        dataset: Union[str, Dict, Dataset, DatasetDict]
+    ) -> DatasetDict:
+        """
+        Process the dataset for pre-training LLMs.
+        """
+        return self.process_dataset(dataset)
+
+    def fine_tuning(
+        self,
+        dataset: Union[str, Dict, Dataset, DatasetDict],
+        prompt_template: Optional[str] = None
+    ) -> DatasetDict:
+        """
+        Process the dataset for fine-tuning.
+        """
+        # For fine-tuning, you might want to apply the prompt template before tokenization
+        # This would require modifying the process_dataset method or adding a new method
+        return self.process_dataset(dataset)
+
+    def instruction_tuning(
+        self,
+        dataset: Union[str, Dict, Dataset, DatasetDict],
+        prompt_template: Optional[str] = None,
+        api_function: Optional[callable] = None
+    ) -> DatasetDict:
+        """
+        Process the dataset for instruction tuning.
+        """
+        # For instruction tuning, you might want to apply the prompt template 
+        # and API function before tokenization
+        # This would require modifying the process_dataset method or adding a new method
+        return self.process_dataset(dataset)
+
+    def prepare_dataloader(
+        self,
+        dataset: Dataset,
+        batch_size: int,
+        shuffle: bool = True
+    ) -> DataLoader:
+        """
+        Prepare a DataLoader from a processed dataset.
+        """
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+# # Example usage
+# if __name__ == "__main__":
+#     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+#     pipeline = AdvancedPipeline(
+#         tokenizer=tokenizer,
+#         max_sequence_length=128
+#     )
+
+#     example_dataset = r"C:\Users\heman\Desktop\Coding\data\fka___awesome-chatgpt-prompts"  # or a dictionary, Dataset, or DatasetDict
+
+#     # Pre-training LLMs
+#     logger.info("Performing pre-training LLMs task...")
+#     pre_training_result = pipeline.pre_training_llms(example_dataset)
+#     for split_name, split_dataset in pre_training_result.items():
+#         logger.info(f"Pre-training result shape for {split_name}: {tokenizer.decode(split_dataset['input_ids'][0])}")
+
+#     # Fine-tuning
+#     logger.info("Performing fine-tuning task...")
+#     fine_tuning_result = pipeline.fine_tuning(example_dataset)
+#     for split_name, split_dataset in fine_tuning_result.items():
+#         logger.info(f"Fine-tuning result shape for {split_name}: {split_dataset['input_ids'].shape}")
+
+#     # Instruction tuning
+#     logger.info("Performing instruction tuning task...")
+#     instruction_tuning_result = pipeline.instruction_tuning(example_dataset)
+#     for split_name, split_dataset in instruction_tuning_result.items():
+#         logger.info(f"Instruction tuning result shape for {split_name}: {split_dataset['input_ids'].shape}")
+
+#     # Prepare DataLoader (example for the 'train' split)
+#     batch_size = 32
+#     train_dataloader = pipeline.prepare_dataloader(instruction_tuning_result['train'], batch_size=batch_size)
+#     train_dataloader = pipeline.prepare_dataloader(instruction_tuning_result['test'], batch_size=batch_size)
+#     logger.info(f"DataLoader created for 'train' split with batch size: {batch_size}")
+
+
+import logging
+from typing import Union, Dict, List, Optional
+from datasets import Dataset, DatasetDict
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def apply_prompt_template(
+    dataset: Union[str, Dict, Dataset, DatasetDict],
+    prompt_template: str,
+    target_columns: Optional[List[str]] = None,
+    instruction: Optional[str] = None,
+    response: Optional[str] = None
+) -> Union[Dataset, DatasetDict]:
+    """
+    Apply prompt template and process target columns for the given dataset.
+
+    Args:
+        dataset: Input dataset in various formats.
+        prompt_template: Template string for the prompt.
+        target_columns: List of target column names to process.
+        instruction: Optional instruction to include in the prompt.
+        response: Optional response to include in the prompt.
+
+    Returns:
+        Processed dataset with applied prompt template.
+    """
+    try:
+        # # Load dataset if it's a string (file path)
+        # if isinstance(dataset, str):
+        #     dataset = Dataset.from_json(dataset)
+        #     logger.info(f"Loaded dataset from file: {dataset}")
+
+        # # Convert single Dataset to DatasetDict if necessary
+        # if isinstance(dataset, Dataset):
+        #     dataset = DatasetDict({"train": dataset})
+        #     logger.info("Converted single Dataset to DatasetDict")
+
+        # # Ensure dataset is a DatasetDict
+        # if not isinstance(dataset, DatasetDict):
+        #     raise ValueError("Invalid dataset format. Expected DatasetDict.")
+
+        # Process each split in the dataset
+        for split_name, split_dataset in dataset.items():
+            logger.info(f"Processing split: {split_name}")
+
+            # Define a function to apply the prompt template
+            def apply_template(example):
+                processed_example = example.copy()
+                for column in split_dataset.column_names:
+                    if target_columns and column not in target_columns:
+                        continue
+
+                    prompt = prompt_template.format(
+                        instruction=instruction or "",
+                        response=response or "",
+                        **{col: example[col] for col in split_dataset.column_names}
+                    )
+                    processed_example[column] = f"{example[column]} {prompt}".strip()
+
+                return processed_example
+
+            # Apply the template to the dataset
+            processed_split = split_dataset.map(
+                apply_template,
+                desc=f"Applying prompt template to {split_name}"
+            )
+
+            # Update the dataset with the processed split
+            dataset[split_name] = processed_split
+
+        logger.info("Prompt template applied successfully to all splits")
+        return dataset
+
+    except Exception as e:
+        logger.error(f"Error occurred while applying prompt template: {str(e)}")
+        raise
+
+# # Example usage
+# if __name__ == "__main__":
+#     # # Sample dataset
+#     # sample_dataset = DatasetDict({
+#     #     "train": Dataset.from_dict({"act": ["Action 1", "Action 2"], "prompt": ["Prompt 1", "Prompt 2"]}),
+#     #     "test": Dataset.from_dict({"act": ["Action 3"], "prompt": ["Prompt 3"]}),
+#     #     "eval": Dataset.from_dict({"act": ["Action 4"], "prompt": ["Prompt 4"]})
+#     # })
+#     dataset=prepare_datasetsforhemanth(r"C:\Users\heman\Desktop\Coding\data\fka___awesome-chatgpt-prompts")
+
+#     # Sample prompt template
+#     prompt_template = "kandimalla hemanth"
+
+#     # Apply prompt template
+#     processed_dataset = apply_prompt_template(
+#         dataset=dataset,
+#         prompt_template=prompt_template,
+#         target_columns=["act", "prompt"],
+#         instruction="Perform the action",
+#         response="Completed action"
+#     )
+#     print(processed_dataset )
+#     # # Print results
+#     # for split_name, split_dataset in processed_dataset.items():
+#     #     print(f"\n{split_name.capitalize()} Split:")
+#     #     for example in split_dataset:
+#     #         print(example)
+

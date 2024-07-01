@@ -1,0 +1,14 @@
+no_cuda: false
+patch_size: 16
+latent_size: 768
+n_channels: 3
+num_heads: 12
+num_encoders: 12
+dropout: 0.1
+img_size: 224
+num_classes: 10
+epochs: 10
+lr: 0.01
+weight_decay: 0.03
+batch_size: 4
+dry_run: false

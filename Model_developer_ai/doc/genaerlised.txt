@@ -1,0 +1,64 @@
+step1:
+---------------------------------------------------------------------
+data :
+
+path_of_data  is converted into .txt file
+path_of_folder is converted into .flac file
+path_of_folder is converted into .mp4 file
+path_of_folder is convert into png file
+
+
+
+organised file 
+text
+video 
+image 
+audio 
+
+step2
+-----------------------------------------------------------------------
+Labelings properly 
+coversion :
+
+arrange 
+text ---> .txt
+image ---> .png
+video ---> .mp4
+audio ----> .flac
+
+
+
+
+
+
+
+data_augmentaion :
+text :
+image:
+video:
+audio:
+
+
+
+
+pre_processing :
+
+text: 
+image:
+video:
+audio:
+
+
+
+
+
+
+generalised pipline for data pre_processing 
+
+using the adavncedpreprocessing from transformers module
+
+advanced model loder , model anlaysis , loader , plots , weights , 
+
+
+
+pending: generalised trainer , eval, test , inference , very advanvced any given model 
