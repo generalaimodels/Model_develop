@@ -1,14 +1,9 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
-
 import os
 import pkgutil
 import importlib
 import torch
 
-from .abstract_accelerator import DeepSpeedAccelerator
+from hardware.abstract_accelerator import DeepSpeedAccelerator
 
 
 class HPU_Accelerator(DeepSpeedAccelerator):

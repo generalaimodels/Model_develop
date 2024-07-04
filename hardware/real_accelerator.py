@@ -12,11 +12,11 @@ except ImportError as e:
     accel_logger = None
 
 try:
-    from accelerator.abstract_accelerator import DeepSpeedAccelerator as dsa1
+    from hardware.abstract_accelerator import DeepSpeedAccelerator as dsa1
 except ImportError as e:
     dsa1 = None
 try:
-    from deepspeed.accelerator.abstract_accelerator import DeepSpeedAccelerator as dsa2
+    from hardware.abstract_accelerator import DeepSpeedAccelerator as dsa2
 except ImportError as e:
     dsa2 = None
 

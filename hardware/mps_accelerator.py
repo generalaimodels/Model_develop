@@ -1,11 +1,6 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
-
 import torch
 
-from .abstract_accelerator import DeepSpeedAccelerator
+from hardware.abstract_accelerator import DeepSpeedAccelerator
 
 # During setup stage torch may not be installed, pass on no torch will
 # allow op builder related API to be executed.

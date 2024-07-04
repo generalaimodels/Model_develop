@@ -1,10 +1,5 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
-
 import torch
-from .abstract_accelerator import DeepSpeedAccelerator
+from hardware.abstract_accelerator import DeepSpeedAccelerator
 
 try:
     import oneccl_bindings_for_pytorch  # noqa: F401 # type: ignore
