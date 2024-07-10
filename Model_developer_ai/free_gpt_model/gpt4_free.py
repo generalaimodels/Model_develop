@@ -53,7 +53,6 @@ async def print_response():
      if chunk.choices[0].delta.content:
         print(chunk.choices[0].delta.content or "", end="")
 
-
 asyncio.run(print_response()) 
 
 
