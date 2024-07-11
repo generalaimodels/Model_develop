@@ -1,8 +1,15 @@
 import logging
 import os
-from typing import Dict, Any,Tuple
-
-from typing import Optional, Tuple
+from typing import Dict, Any,Optional, Tuple
+import numpy as np
+from torch.utils.data import DataLoader
+from transformers import AdamW, get_linear_schedule_with_warmup
+from tqdm import tqdm
+from evaluate import load
+import plotly.graph_objects as go
+from sklearn.metrics import f1_score, accuracy_score
+import torch
+import torch.nn.functional as F
 
 from transformers import (
     AutoModelForCausalLM,
@@ -16,11 +23,7 @@ from transformers import (
 import torch
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    get_linear_schedule_with_warmup,
-)
+
 from tqdm import tqdm
 from evaluate import load
 from data_processing import (
@@ -29,9 +32,204 @@ from data_processing import (
     preprocess_data,
     create_data_loaders
 )
-# Set up logging
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+
+def train_and_evaluate_updated(
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+    model: torch.nn.Module,
+    tokenizer: Any,
+    output_dir: str,
+    num_epochs: int = 3,
+    learning_rate: float = 2e-5,
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+) -> Dict[str, Any]:
+    try:
+        # model.to(device)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=0,
+            num_training_steps=(len(train_loader) * num_epochs),
+        )
+
+        best_eval_loss = float('inf')
+        metrics = {
+            "train_loss": [], "train_ppl": [], "eval_loss": [], "eval_ppl": [],
+            "f1": [], "accuracy": []
+        }
+
+        for epoch in range(num_epochs):
+            logger.info(f"Starting epoch {epoch + 1}/{num_epochs}")
+            model.train()
+            total_loss = 0
+
+            for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}"):
+                batch = {k: torch.stack(v).to(device) for k, v in batch.items()}
+                outputs = model(**batch)
+                ##  Debug information
+#                 print(f"Logits shape: {outputs.logits.shape}")
+#                 print(f"Labels shape: {batch['labels'].shape}")
+#                 print(f"Logits min: {outputs.logits.min()}, max: {outputs.logits.max()}")
+#                 print(f"Labels min: {batch['labels'].min()}, max: {batch['labels'].max()}")
+                
+#                 # Check for NaN or inf values
+#                 if torch.isnan(outputs.logits).any() or torch.isinf(outputs.logits).any():
+#                     print("NaN or inf found in logits!")
+#                 if torch.isnan(batch['labels']).any() or torch.isinf(batch['labels']).any():
+#                     print("NaN or inf found in labels!")
+
+#                 # Calculate loss manually
+#                 loss = F.cross_entropy(outputs.logits.view(-1, outputs.logits.size(-1)), 
+#                                        batch['labels'].view(-1), 
+#                                        ignore_index=-100)  # Assuming -100 is the padding index
+
+#                 print(f"Calculated loss: {loss.item()}")
+
+#                 if torch.isnan(loss) or torch.isinf(loss):
+#                     print("Loss is NaN or inf!")
+#                     continue  # Skip this batch
+
+#                 # print(f"Type of outputs: {type(outputs)}")
+#                 # print(f"Attributes of outputs: {dir(outputs)}")
+                
+#                 # Check if loss is present in the outputs
+#                 if hasattr(outputs, 'loss'):
+#                     loss = outputs.loss
+#                     print(loss)
+#                 elif hasattr(outputs, 'logits'):
+#                     # If loss is not present but logits are, calculate loss manually
+#                     logits = outputs.logits
+#                     labels = batch['labels']
+#                     loss_fct = torch.nn.CrossEntropyLoss()
+#                     loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+#                     print(loss)
+#                 else:
+#                     raise ValueError("Model outputs do not contain 'loss' or 'logits'.")
+
+                
+#                 # # Ensure loss is present in the outputs and gracefully handle if it's not
+#                 # if hasattr(outputs, 'loss'):
+#                 #     loss = outputs.loss
+#                 # else:
+#                 #     raise ValueError("Model outputs do not contain the 'loss' attribute.")
+                
+                
+                # # Debug information
+                # print(f"Logits shape: {outputs.logits.shape}")
+                # print(f"Labels shape: {batch['labels'].shape}")
+                # print(f"Logits min: {outputs.logits.min().item():.4f}, max: {outputs.logits.max().item():.4f}")
+                # print(f"Labels min: {batch['labels'].min().item()}, max: {batch['labels'].max().item()}")
+                
+                num_classes = outputs.logits.size(-1)
+                if batch['labels'].max() >= num_classes:
+                    print(f"Warning: Labels contain values >= num_classes ({num_classes})")
+                    batch['labels'] = torch.clamp(batch['labels'], 0, num_classes - 1)
+
+                # Calculate loss manually
+                loss = F.cross_entropy(outputs.logits.view(-1, num_classes), 
+                                       batch['labels'].view(-1), 
+                                       ignore_index=-100)
+
+                # print(f"Calculated loss: {loss.item():.4f}")
+
+                if torch.isnan(loss) or torch.isinf(loss):
+                    print("Loss is NaN or inf! Skipping this batch.")
+                    continue
+
+                total_loss += loss.item()
+
+                loss.backward()
+                
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+
+            model.eval()
+            eval_loss = 0
+            eval_preds = []
+            eval_labels = []
+
+            with torch.no_grad():
+                for batch in tqdm(test_loader, desc="Evaluating"):
+                    batch = {k: torch.stack(v).to(device) for k, v in batch.items()}
+                    outputs = model(**batch)
+                    
+                    loss = F.cross_entropy(outputs.logits.view(-1, num_classes), 
+                                           batch['labels'].view(-1), 
+                                           ignore_index=-100)
+                    eval_loss += loss.item()
+                    
+                    preds = torch.argmax(outputs.logits, -1).cpu().numpy()
+                    labels = batch['labels'].cpu().numpy()
+                    
+                    eval_preds.extend(preds.flatten())
+                    eval_labels.extend(labels.flatten())
+
+            train_epoch_loss = total_loss / len(train_loader)
+            eval_epoch_loss = eval_loss / len(test_loader)
+            
+            train_ppl = np.exp(min(train_epoch_loss, 100))
+            eval_ppl = np.exp(min(eval_epoch_loss, 100))
+
+            # Ensure eval_preds and eval_labels are 1D arrays
+            eval_preds = np.array(eval_preds).flatten()
+            eval_labels = np.array(eval_labels).flatten()
+
+            # Calculate F1 score and accuracy
+            f1 = f1_score(eval_labels, eval_preds, average='macro')
+            accuracy = accuracy_score(eval_labels, eval_preds)
+
+            metrics["train_loss"].append(train_epoch_loss)
+            metrics["train_ppl"].append(train_ppl)
+            metrics["eval_loss"].append(eval_epoch_loss)
+            metrics["eval_ppl"].append(eval_ppl)
+            metrics["f1"].append(f1)
+            metrics["accuracy"].append(accuracy)
+
+            logger.info(f"Epoch {epoch + 1}: Train PPL: {train_ppl:.4f}, Eval PPL: {eval_ppl:.4f}, F1: {f1:.4f}, Accuracy: {accuracy:.4f}")
+
+            if eval_epoch_loss < best_eval_loss:
+                best_eval_loss = eval_epoch_loss
+                model_save_path = os.path.join(output_dir, f"best_model_epoch_{epoch + 1}")
+                model.save_pretrained(model_save_path)
+                logger.info(f"Best model saved to {model_save_path}")
+
+        return metrics
+
+    except Exception as e:
+        logger.exception(f"An error occurred during training: {str(e)}")
+        raise
+
+def plot_metrics(metrics: Dict[str, list]):
+    try:
+        fig = go.Figure()
+        epochs = list(range(1, len(metrics["train_loss"]) + 1))
+
+        for metric_name, metric_values in metrics.items():
+            if isinstance(metric_values, list) and len(metric_values) == len(epochs):
+                fig.add_trace(go.Scatter(x=epochs, y=metric_values, mode='lines+markers', name=metric_name))
+
+        fig.update_layout(title='Training and Evaluation Metrics',
+                          xaxis_title='Epoch',
+                          yaxis_title='Value',
+                          legend_title='Metrics')
+
+        fig.show()
+        fig.write_html("metrics_plot.html")
+        logger.info("Metrics plot saved as metrics_plot.html")
+
+    except Exception as e:
+        logger.exception(f"An error occurred while plotting metrics: {str(e)}")
+
+
 
 def train_and_evaluate(
     train_loader: DataLoader,
@@ -60,7 +258,7 @@ def train_and_evaluate(
     """
     try:
 
-        model.to(device)
+        # model.to(device)
 
         # Setup optimizer and scheduler
         optimizer = AdamW(model.parameters(), lr=learning_rate)
@@ -81,7 +279,7 @@ def train_and_evaluate(
             total_loss = 0
 
             for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}"):
-                batch = {k: v.to(device) for k, v in batch.items()}
+                batch = {k: torch.stack(v).to(device) for k, v in batch.items()}
                 outputs = model(**batch)
                 loss = outputs.loss
                 total_loss += loss.item()
@@ -98,7 +296,7 @@ def train_and_evaluate(
 
             with torch.no_grad():
                 for batch in tqdm(test_loader, desc="Evaluating"):
-                    # batch = {k: v.to(device) for k, v in batch.items()}
+                    batch = {k: torch.stack(v).to(device) for k, v in batch.items()}
                     outputs = model(**batch)
                     loss = outputs.loss
                     eval_loss += loss.item()
@@ -139,7 +337,7 @@ def train_and_evaluate(
         logger.exception(f"An error occurred during training: {str(e)}")
         raise
 
-def pre_processing_pipeline(file_path: str, model_name: str, max_length: int = 10, stride: int = 2, batch_size: int = 5) -> Tuple[DataLoader, DataLoader, AutoTokenizer]:
+def pre_processing_pipeline(file_path: str, cache_dir: str, model_name: str, max_length: int = 10, stride: int = 2, batch_size: int = 5) -> Tuple[DataLoader, DataLoader, AutoTokenizer]:
     """
     Main function to process the data and create DataLoaders.
     """
@@ -154,7 +352,7 @@ def pre_processing_pipeline(file_path: str, model_name: str, max_length: int = 1
     logger.info(f"Using device: {device}")
     dataset = load_data(file_path)
     train_dataset, test_dataset = create_data_split(dataset)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name,cache_dir=cache_dir)
     tokenizer.pad_token = tokenizer.eos_token
     # special_tokens = {'bos_token': '<bos>', 'eos_token': '<eos>', 'unk_token': '<unk>', 'pad_token': '<pad>'}
     # tokenizer.add_special_tokens(special_tokens)
@@ -163,7 +361,7 @@ def pre_processing_pipeline(file_path: str, model_name: str, max_length: int = 1
     test_dataset = preprocess_data(test_dataset, tokenizer, max_length, stride, system_prompt)
     train_loader, test_loader = create_data_loaders(train_dataset, test_dataset, batch_size)
     logger.info("Data processing completed successfully")
-    return train_loader, test_loader
+    return train_loader, test_loader, tokenizer
 
 
 
@@ -218,3 +416,5 @@ def train_model(
 
     trainer.save_model(output_dir)
     logger.info("Model training completed. Weights saved in %s", output_dir)
+
+
