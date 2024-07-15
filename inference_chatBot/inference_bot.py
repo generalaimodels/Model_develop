@@ -51,8 +51,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 def get_generator(path: str) -> pipeline:
-    cache_dir = "/scratch/hemanth/LLMs/"
-    token = "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"
+    cache_dir = "Path to cache directory"
+    token = "XXXXXXXX"
 
     try:
         if os.path.exists(path):
