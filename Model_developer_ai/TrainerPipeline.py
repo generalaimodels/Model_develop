@@ -57,7 +57,7 @@ class AdvancedModelTrainer:
         except Exception as e:
             logging.error(f"Error creating logo: {str(e)}")
 
-    def save_sharded_model(self, save_dir: str, shard_size_mb: int = 1024):
+    def save_sharded_model(self, save_dir: str, shard_size_mb: int = 10*1024):
         """
         Saves the model's state dictionary in shards.
 

@@ -19,7 +19,7 @@ model=AutoModelForCausalLM.from_pretrained(
     quantization_config=bnb_config,
 )
 tokenizer = AutoTokenizer.from_pretrained('microsoft/Phi-3-mini-4k-instruct') 
-
+tokenizer.eos_token=tokenizer.pad_token
 messages = [ 
     {"role": "system", "content": "You are a fraud detection AI assistant."}, 
     {"role": "user", "content": "0,0.3,0.986506310633034,-1,25,40,0.0067353870811739,102.45371092469456,AA,1059,13096.035018400871,7850.955007125409,6742.080561007602,5,5,CB,163,1,BC,0,1,9,0,1500.0,0,INTERNET,16.224843433978073,linux,1,1,"}, 
